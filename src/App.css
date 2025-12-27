@@ -1,0 +1,132 @@
+* {
+  box-sizing: border-box;
+}
+
+.container {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #0f2027, #000);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Segoe UI", sans-serif;
+}
+
+.card {
+  background: rgba(20, 20, 30, 0.9);
+  border-radius: 20px;
+  padding: 30px;
+  width: 360px;
+  box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  color: #e5e7eb;
+}
+
+.title {
+  text-align: center;
+  color: #00ffff;
+  text-shadow: 0 0 10px #00ffff;
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #a855f7;
+  margin-bottom: 15px;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 15px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #06b6d4, #7c3aed);
+  color: white;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+button:hover {
+  transform: scale(1.03);
+  box-shadow: 0 0 15px #7c3aed;
+}
+
+.link {
+  margin-top: 15px;
+  text-align: center;
+  color: #00ffff;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ADD ITEM */
+.add {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.add input {
+  flex: 1;
+  min-width: 0;
+}
+
+.add-btn {
+  width: 50px;
+  padding: 0;
+  font-size: 22px;
+  border-radius: 12px;
+}
+
+/* LISTA */
+ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 15px;
+}
+
+li {
+  background: #020617;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+li span {
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.delete {
+  background: transparent;
+  color: #ef4444;
+  font-size: 16px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.delete:hover {
+  box-shadow: none;
+  transform: scale(1.2);
+}
+
+/* LOGOUT */
+.logout {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
