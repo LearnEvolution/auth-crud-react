@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
 const API_URL = "https://auth-crud-api.onrender.com/api";
@@ -12,7 +12,15 @@ function App() {
   const [items, setItems] = useState([]);
   const [newItem, setNewItem] = useState("");
 
-  // LOGIN
+  // ✅ AO ABRIR O APP — RESTAURA LOGIN
+  useEffect(() => {
+    const savedToken = localStorage.getItem("token");
+    if (savedToken) {
+      setToken(savedToken);
+      loadItems(savedToken);
+    }
+  }, []);
+
   async function handleLogin() {
     const res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
@@ -23,6 +31,7 @@ function App() {
     const data = await res.json();
 
     if (data.token) {
+      localStorage.setItem("token", data.token);
       setToken(data.token);
       loadItems(data.token);
     } else {
@@ -30,7 +39,6 @@ function App() {
     }
   }
 
-  // CADASTRO
   async function handleRegister() {
     const res = await fetch(`${API_URL}/auth/register`, {
       method: "POST",
@@ -41,7 +49,7 @@ function App() {
     const data = await res.json();
 
     if (data.id) {
-      alert("Cadastro realizado! Agora faça login.");
+      alert("Cadastro realizado! Faça login.");
       setMode("login");
       setName("");
       setPassword("");
@@ -50,17 +58,19 @@ function App() {
     }
   }
 
-  // ITENS
-  async function loadItems(tok = token) {
+  async function loadItems(tok) {
     const res = await fetch(`${API_URL}/items`, {
-      headers: { Authorization: `Bearer ${tok}` }
+      headers: {
+        Authorization: `Bearer ${tok}`
+      }
     });
+
     const data = await res.json();
     setItems(data);
   }
 
   async function addItem() {
-    if (!newItem) return;
+    if (!newItem.trim()) return;
 
     await fetch(`${API_URL}/items`, {
       method: "POST",
@@ -72,27 +82,29 @@ function App() {
     });
 
     setNewItem("");
-    loadItems();
+    loadItems(token);
   }
 
   async function deleteItem(id) {
     await fetch(`${API_URL}/items/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     });
-    loadItems();
+
+    loadItems(token);
   }
 
   function logout() {
+    localStorage.removeItem("token");
     setToken(null);
     setItems([]);
     setEmail("");
     setPassword("");
   }
 
-  // ======================
-  // LOGIN / CADASTRO
-  // ======================
+  // 🔐 TELA DE LOGIN / CADASTRO
   if (!token) {
     return (
       <div className="container">
@@ -102,17 +114,20 @@ function App() {
           {mode === "login" ? (
             <>
               <h2 className="subtitle">Login</h2>
+
               <input
                 placeholder="Email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
               />
+
               <input
                 type="password"
                 placeholder="Senha"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
               />
+
               <button onClick={handleLogin}>Entrar</button>
 
               <p className="link" onClick={() => setMode("register")}>
@@ -122,22 +137,26 @@ function App() {
           ) : (
             <>
               <h2 className="subtitle">Cadastro</h2>
+
               <input
                 placeholder="Nome"
                 value={name}
                 onChange={e => setName(e.target.value)}
               />
+
               <input
                 placeholder="Email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
               />
+
               <input
                 type="password"
                 placeholder="Senha"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
               />
+
               <button onClick={handleRegister}>Cadastrar</button>
 
               <p className="link" onClick={() => setMode("login")}>
@@ -150,9 +169,7 @@ function App() {
     );
   }
 
-  // ======================
-  // ITENS
-  // ======================
+  // 📦 TELA PRINCIPAL
   return (
     <div className="container">
       <div className="card">
@@ -164,9 +181,7 @@ function App() {
             value={newItem}
             onChange={e => setNewItem(e.target.value)}
           />
-          <button className="add-btn" onClick={addItem}>
-            +
-          </button>
+          <button className="add-btn" onClick={addItem}>+</button>
         </div>
 
         <ul>
@@ -177,15 +192,13 @@ function App() {
                 className="delete"
                 onClick={() => deleteItem(item._id)}
               >
-                ✕
+                ❌
               </button>
             </li>
           ))}
         </ul>
 
-        <button className="logout" onClick={logout}>
-          Logout
-        </button>
+        <button className="logout" onClick={logout}>Logout</button>
       </div>
     </div>
   );
