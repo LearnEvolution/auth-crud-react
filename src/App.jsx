@@ -11,14 +11,18 @@ function App() {
   const [token, setToken] = useState(null);
   const [items, setItems] = useState([]);
   const [newItem, setNewItem] = useState("");
+  const [loading, setLoading] = useState(true); // 🔑 CHAVE DO PROBLEMA
 
   // ✅ AO ABRIR O APP — RESTAURA LOGIN
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
+
     if (savedToken) {
       setToken(savedToken);
       loadItems(savedToken);
     }
+
+    setLoading(false); // 👈 só depois de verificar o token
   }, []);
 
   async function handleLogin() {
@@ -104,7 +108,18 @@ function App() {
     setPassword("");
   }
 
-  // 🔐 TELA DE LOGIN / CADASTRO
+  // ⏳ TELA DE CARREGAMENTO (EVITA BUG NO VERCEL)
+  if (loading) {
+    return (
+      <div className="container">
+        <div className="card">
+          <h1 className="title">Carregando...</h1>
+        </div>
+      </div>
+    );
+  }
+
+  // 🔐 LOGIN / CADASTRO
   if (!token) {
     return (
       <div className="container">
