@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-
 const API_URL = "https://auth-crud-api.onrender.com/api";
-
 const STATUS_FLOW = ["novo", "preparando", "pronto", "entregue"];
 
 function App() {
@@ -16,20 +14,33 @@ function App() {
   const [newItem, setNewItem] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // 🔄 RESTAURA LOGIN
+  // 🔐 RESTAURA SESSÃO COM VALIDAÇÃO REAL
   useEffect(() => {
-    const t = localStorage.getItem("token");
-    const n = localStorage.getItem("name");
-    const e = localStorage.getItem("email");
+    async function restore() {
+      const t = localStorage.getItem("token");
+      const n = localStorage.getItem("name");
 
-    if (t) {
-      setToken(t);
-      setName(n || "");
-      setEmail(e || "");
-      loadItems(t);
+      if (!t) {
+        setLoading(false);
+        return;
+      }
+
+      const res = await fetch(`${API_URL}/private`, {
+        headers: { Authorization: `Bearer ${t}` }
+      });
+
+      if (res.ok) {
+        setToken(t);
+        setName(n || "");
+        loadItems(t);
+      } else {
+        localStorage.clear();
+      }
+
+      setLoading(false);
     }
 
-    setLoading(false);
+    restore();
   }, []);
 
   async function handleLogin() {
@@ -48,11 +59,9 @@ function App() {
 
     localStorage.setItem("token", data.token);
     localStorage.setItem("name", data.user.name);
-    localStorage.setItem("email", data.user.email);
 
     setToken(data.token);
     setName(data.user.name);
-
     loadItems(data.token);
   }
 
@@ -72,7 +81,6 @@ function App() {
 
     alert("Cadastro realizado! Faça login.");
     setMode("login");
-    setPassword("");
   }
 
   async function loadItems(tok) {
@@ -101,10 +109,8 @@ function App() {
   }
 
   async function updateStatus(item) {
-    const index = STATUS_FLOW.indexOf(item.status);
-    if (index === -1 || index === STATUS_FLOW.length - 1) return;
-
-    const next = STATUS_FLOW[index + 1];
+    const idx = STATUS_FLOW.indexOf(item.status);
+    if (idx < 0 || idx === STATUS_FLOW.length - 1) return;
 
     await fetch(`${API_URL}/items/${item._id}`, {
       method: "PUT",
@@ -112,7 +118,7 @@ function App() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ status: next })
+      body: JSON.stringify({ status: STATUS_FLOW[idx + 1] })
     });
 
     loadItems(token);
@@ -131,43 +137,31 @@ function App() {
     localStorage.clear();
     setToken(null);
     setItems([]);
-    setEmail("");
     setName("");
-    setPassword("");
   }
 
-  if (loading) {
-    return (
-      <div className="container">
-        <div className="card">
-          <h1 className="title">Carregando...</h1>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="container"><h1>Carregando...</h1></div>;
 
   if (!token) {
     return (
       <div className="container">
         <div className="card">
-          <h1 className="title">Pizzaria App</h1>
+          <h1>Pizzaria App</h1>
 
           {mode === "login" ? (
             <>
-              <h2 className="subtitle">Login</h2>
-              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" />
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" />
+              <input placeholder="Email" onChange={e => setEmail(e.target.value)} />
+              <input type="password" placeholder="Senha" onChange={e => setPassword(e.target.value)} />
               <button onClick={handleLogin}>Entrar</button>
-              <p className="link" onClick={() => setMode("register")}>Não tem conta? Cadastre-se</p>
+              <p onClick={() => setMode("register")}>Cadastrar</p>
             </>
           ) : (
             <>
-              <h2 className="subtitle">Cadastro</h2>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Nome" />
-              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" />
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" />
+              <input placeholder="Nome" onChange={e => setName(e.target.value)} />
+              <input placeholder="Email" onChange={e => setEmail(e.target.value)} />
+              <input type="password" placeholder="Senha" onChange={e => setPassword(e.target.value)} />
               <button onClick={handleRegister}>Cadastrar</button>
-              <p className="link" onClick={() => setMode("login")}>Já tenho conta</p>
+              <p onClick={() => setMode("login")}>Login</p>
             </>
           )}
         </div>
@@ -178,39 +172,31 @@ function App() {
   return (
     <div className="container">
       <div className="card">
-        <h1 className="title">Pedidos de Pizza</h1>
-        <h2 className="subtitle">Cliente: {name}</h2>
+        <h1>Pedidos de Pizza</h1>
+        <h2>Cliente: {name}</h2>
 
-        <div className="add">
-          <input
-            placeholder="Descrição do pedido"
-            value={newItem}
-            onChange={e => setNewItem(e.target.value)}
-          />
-          <button className="add-btn" onClick={addItem}>+</button>
-        </div>
+        <input
+          placeholder="Descrição do pedido"
+          value={newItem}
+          onChange={e => setNewItem(e.target.value)}
+        />
+        <button onClick={addItem}>+</button>
 
         <ul>
           {items.map(item => (
-            <li key={item._id} style={{ flexDirection: "column", gap: "6px" }}>
-              <strong>🍕 Pedido</strong>
-              <span><b>Descrição:</b> {item.description}</span>
-              <span><b>Status:</b> {item.status}</span>
-
+            <li key={item._id}>
+              <b>🍕 Pedido</b>
+              <div>Descrição: {item.description || "—"}</div>
+              <div>Status: {item.status}</div>
               {item.status !== "entregue" && (
-                <button onClick={() => updateStatus(item)}>
-                  Avançar status
-                </button>
+                <button onClick={() => updateStatus(item)}>Avançar status</button>
               )}
-
-              <button className="delete" onClick={() => deleteItem(item._id)}>
-                ❌ Cancelar
-              </button>
+              <button onClick={() => deleteItem(item._id)}>❌</button>
             </li>
           ))}
         </ul>
 
-        <button className="logout" onClick={logout}>Logout</button>
+        <button onClick={logout}>Logout</button>
       </div>
     </div>
   );
