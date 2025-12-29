@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-
 const API_URL = "https://auth-crud-api.onrender.com/api";
-
-const STATUS_FLOW = ["novo", "preparando", "pronto", "entregue"];
 
 function App() {
   const [mode, setMode] = useState("login");
@@ -16,17 +13,17 @@ function App() {
   const [newItem, setNewItem] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // 🔄 RESTAURA LOGIN
+  // 🔄 RESTAURA LOGIN COMPLETO
   useEffect(() => {
-    const t = localStorage.getItem("token");
-    const n = localStorage.getItem("name");
-    const e = localStorage.getItem("email");
+    const savedToken = localStorage.getItem("token");
+    const savedEmail = localStorage.getItem("email");
+    const savedName = localStorage.getItem("name");
 
-    if (t) {
-      setToken(t);
-      setName(n || "");
-      setEmail(e || "");
-      loadItems(t);
+    if (savedToken) {
+      setToken(savedToken);
+      setEmail(savedEmail || "");
+      setName(savedName || "");
+      loadItems(savedToken);
     }
 
     setLoading(false);
@@ -41,19 +38,19 @@ function App() {
 
     const data = await res.json();
 
-    if (!data.token) {
+    if (data.token) {
+      // ✅ SALVA TUDO
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("email", email);
+      localStorage.setItem("name", data.name || email);
+
+      setToken(data.token);
+      setName(data.name || email);
+
+      loadItems(data.token);
+    } else {
       alert(data.msg || "Erro no login");
-      return;
     }
-
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("name", data.user.name);
-    localStorage.setItem("email", data.user.email);
-
-    setToken(data.token);
-    setName(data.user.name);
-
-    loadItems(data.token);
   }
 
   async function handleRegister() {
@@ -65,23 +62,24 @@ function App() {
 
     const data = await res.json();
 
-    if (!data.id) {
+    if (data.id) {
+      alert("Cadastro realizado! Faça login.");
+      setMode("login");
+      setPassword("");
+    } else {
       alert(data.msg || "Erro no cadastro");
-      return;
     }
-
-    alert("Cadastro realizado! Faça login.");
-    setMode("login");
-    setPassword("");
   }
 
   async function loadItems(tok) {
     const res = await fetch(`${API_URL}/items`, {
-      headers: { Authorization: `Bearer ${tok}` }
+      headers: {
+        Authorization: `Bearer ${tok}`
+      }
     });
 
     const data = await res.json();
-    setItems(Array.isArray(data) ? data : []);
+    setItems(data);
   }
 
   async function addItem() {
@@ -93,35 +91,19 @@ function App() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ description: newItem })
+      body: JSON.stringify({ title: newItem })
     });
 
     setNewItem("");
     loadItems(token);
   }
 
-  async function updateStatus(item) {
-    const index = STATUS_FLOW.indexOf(item.status);
-    if (index === -1 || index === STATUS_FLOW.length - 1) return;
-
-    const next = STATUS_FLOW[index + 1];
-
-    await fetch(`${API_URL}/items/${item._id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ status: next })
-    });
-
-    loadItems(token);
-  }
-
   async function deleteItem(id) {
     await fetch(`${API_URL}/items/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     });
 
     loadItems(token);
@@ -136,6 +118,7 @@ function App() {
     setPassword("");
   }
 
+  // ⏳ LOADING
   if (loading) {
     return (
       <div className="container">
@@ -146,6 +129,7 @@ function App() {
     );
   }
 
+  // 🔐 LOGIN / CADASTRO
   if (!token) {
     return (
       <div className="container">
@@ -155,19 +139,54 @@ function App() {
           {mode === "login" ? (
             <>
               <h2 className="subtitle">Login</h2>
-              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" />
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" />
+
+              <input
+                placeholder="Email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+              />
+
+              <input
+                type="password"
+                placeholder="Senha"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+
               <button onClick={handleLogin}>Entrar</button>
-              <p className="link" onClick={() => setMode("register")}>Não tem conta? Cadastre-se</p>
+
+              <p className="link" onClick={() => setMode("register")}>
+                Não tem conta? Cadastre-se
+              </p>
             </>
           ) : (
             <>
               <h2 className="subtitle">Cadastro</h2>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Nome" />
-              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" />
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" />
+
+              <input
+                placeholder="Nome"
+                value={name}
+                onChange={e => setName(e.target.value)}
+              />
+
+              <input
+                placeholder="Email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+              />
+
+              <input
+                type="password"
+                placeholder="Senha"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+
               <button onClick={handleRegister}>Cadastrar</button>
-              <p className="link" onClick={() => setMode("login")}>Já tenho conta</p>
+
+              <p className="link" onClick={() => setMode("login")}>
+                Já tenho conta
+              </p>
             </>
           )}
         </div>
@@ -175,11 +194,12 @@ function App() {
     );
   }
 
+  // 🍕 PEDIDOS
   return (
     <div className="container">
       <div className="card">
         <h1 className="title">Pedidos de Pizza</h1>
-        <h2 className="subtitle">Cliente: {name}</h2>
+        <h2 className="subtitle">Cliente: {name || email}</h2>
 
         <div className="add">
           <input
@@ -194,14 +214,9 @@ function App() {
           {items.map(item => (
             <li key={item._id} style={{ flexDirection: "column", gap: "6px" }}>
               <strong>🍕 Pedido</strong>
-              <span><b>Descrição:</b> {item.description}</span>
-              <span><b>Status:</b> {item.status}</span>
-
-              {item.status !== "entregue" && (
-                <button onClick={() => updateStatus(item)}>
-                  Avançar status
-                </button>
-              )}
+              <span><b>Cliente:</b> {name || email}</span>
+              <span><b>Descrição:</b> {item.title}</span>
+              <span><b>Status:</b> Novo</span>
 
               <button className="delete" onClick={() => deleteItem(item._id)}>
                 ❌ Cancelar
