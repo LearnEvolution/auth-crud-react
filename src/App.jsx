@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-const API_URL = "https://auth-crud-api.onrender.com/api";
+const API_URL = "http://localhost:3001/api";
+// quando subir pro Render, troca pra:
+// https://auth-crud-api.onrender.com/api
+
+const STATUS_FLOW = ["novo", "preparando", "pronto", "entregue"];
 
 function App() {
   const [mode, setMode] = useState("login");
@@ -11,18 +15,22 @@ function App() {
   const [token, setToken] = useState(null);
   const [items, setItems] = useState([]);
   const [newItem, setNewItem] = useState("");
-  const [loading, setLoading] = useState(true); // 🔑 CHAVE DO PROBLEMA
+  const [loading, setLoading] = useState(true);
 
-  // ✅ AO ABRIR O APP — RESTAURA LOGIN
+  // 🔄 RESTAURA LOGIN
   useEffect(() => {
-    const savedToken = localStorage.getItem("token");
+    const t = localStorage.getItem("token");
+    const n = localStorage.getItem("name");
+    const e = localStorage.getItem("email");
 
-    if (savedToken) {
-      setToken(savedToken);
-      loadItems(savedToken);
+    if (t) {
+      setToken(t);
+      setName(n || "");
+      setEmail(e || "");
+      loadItems(t);
     }
 
-    setLoading(false); // 👈 só depois de verificar o token
+    setLoading(false);
   }, []);
 
   async function handleLogin() {
@@ -34,13 +42,19 @@ function App() {
 
     const data = await res.json();
 
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-      setToken(data.token);
-      loadItems(data.token);
-    } else {
+    if (!data.token) {
       alert(data.msg || "Erro no login");
+      return;
     }
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("name", data.user.name);
+    localStorage.setItem("email", data.user.email);
+
+    setToken(data.token);
+    setName(data.user.name);
+
+    loadItems(data.token);
   }
 
   async function handleRegister() {
@@ -52,25 +66,23 @@ function App() {
 
     const data = await res.json();
 
-    if (data.id) {
-      alert("Cadastro realizado! Faça login.");
-      setMode("login");
-      setName("");
-      setPassword("");
-    } else {
+    if (!data.id) {
       alert(data.msg || "Erro no cadastro");
+      return;
     }
+
+    alert("Cadastro realizado! Faça login.");
+    setMode("login");
+    setPassword("");
   }
 
   async function loadItems(tok) {
     const res = await fetch(`${API_URL}/items`, {
-      headers: {
-        Authorization: `Bearer ${tok}`
-      }
+      headers: { Authorization: `Bearer ${tok}` }
     });
 
     const data = await res.json();
-    setItems(data);
+    setItems(Array.isArray(data) ? data : []);
   }
 
   async function addItem() {
@@ -82,33 +94,49 @@ function App() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ title: newItem })
+      body: JSON.stringify({ description: newItem })
     });
 
     setNewItem("");
     loadItems(token);
   }
 
+  async function updateStatus(item) {
+    const index = STATUS_FLOW.indexOf(item.status);
+    if (index === -1 || index === STATUS_FLOW.length - 1) return;
+
+    const next = STATUS_FLOW[index + 1];
+
+    await fetch(`${API_URL}/items/${item._id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ status: next })
+    });
+
+    loadItems(token);
+  }
+
   async function deleteItem(id) {
     await fetch(`${API_URL}/items/${id}`, {
       method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      headers: { Authorization: `Bearer ${token}` }
     });
 
     loadItems(token);
   }
 
   function logout() {
-    localStorage.removeItem("token");
+    localStorage.clear();
     setToken(null);
     setItems([]);
     setEmail("");
+    setName("");
     setPassword("");
   }
 
-  // ⏳ TELA DE CARREGAMENTO (EVITA BUG NO VERCEL)
   if (loading) {
     return (
       <div className="container">
@@ -119,64 +147,28 @@ function App() {
     );
   }
 
-  // 🔐 LOGIN / CADASTRO
   if (!token) {
     return (
       <div className="container">
         <div className="card">
-          <h1 className="title">Auth + CRUD</h1>
+          <h1 className="title">Pizzaria App</h1>
 
           {mode === "login" ? (
             <>
               <h2 className="subtitle">Login</h2>
-
-              <input
-                placeholder="Email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
-
-              <input
-                type="password"
-                placeholder="Senha"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
-
+              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" />
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" />
               <button onClick={handleLogin}>Entrar</button>
-
-              <p className="link" onClick={() => setMode("register")}>
-                Não tem conta? Cadastre-se
-              </p>
+              <p className="link" onClick={() => setMode("register")}>Não tem conta? Cadastre-se</p>
             </>
           ) : (
             <>
               <h2 className="subtitle">Cadastro</h2>
-
-              <input
-                placeholder="Nome"
-                value={name}
-                onChange={e => setName(e.target.value)}
-              />
-
-              <input
-                placeholder="Email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
-
-              <input
-                type="password"
-                placeholder="Senha"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
-
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Nome" />
+              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" />
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" />
               <button onClick={handleRegister}>Cadastrar</button>
-
-              <p className="link" onClick={() => setMode("login")}>
-                Já tenho conta
-              </p>
+              <p className="link" onClick={() => setMode("login")}>Já tenho conta</p>
             </>
           )}
         </div>
@@ -184,15 +176,15 @@ function App() {
     );
   }
 
-  // 📦 TELA PRINCIPAL
   return (
     <div className="container">
       <div className="card">
-        <h1 className="title">Meus Itens</h1>
+        <h1 className="title">Pedidos de Pizza</h1>
+        <h2 className="subtitle">Cliente: {name}</h2>
 
         <div className="add">
           <input
-            placeholder="Novo item"
+            placeholder="Descrição do pedido"
             value={newItem}
             onChange={e => setNewItem(e.target.value)}
           />
@@ -201,13 +193,19 @@ function App() {
 
         <ul>
           {items.map(item => (
-            <li key={item._id}>
-              <span>{item.title}</span>
-              <button
-                className="delete"
-                onClick={() => deleteItem(item._id)}
-              >
-                ❌
+            <li key={item._id} style={{ flexDirection: "column", gap: "6px" }}>
+              <strong>🍕 Pedido</strong>
+              <span><b>Descrição:</b> {item.description}</span>
+              <span><b>Status:</b> {item.status}</span>
+
+              {item.status !== "entregue" && (
+                <button onClick={() => updateStatus(item)}>
+                  Avançar status
+                </button>
+              )}
+
+              <button className="delete" onClick={() => deleteItem(item._id)}>
+                ❌ Cancelar
               </button>
             </li>
           ))}

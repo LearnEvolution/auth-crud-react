@@ -131,3 +131,19 @@ li span {
 .logout {
   background: linear-gradient(135deg, #ef4444, #dc2626);
 }
+
+.status.novo {
+  color: #facc15;
+}
+
+.status.preparando {
+  color: #38bdf8;
+}
+
+.status.pronto {
+  color: #22c55e;
+}
+
+.status.entregue {
+  color: #a3a3a3;
+}
