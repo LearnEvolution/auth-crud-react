@@ -14,73 +14,68 @@ function App() {
   const [newItem, setNewItem] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // 🔐 RESTAURA SESSÃO COM VALIDAÇÃO REAL
   useEffect(() => {
-    async function restore() {
-      const t = localStorage.getItem("token");
-      const n = localStorage.getItem("name");
+    const t = localStorage.getItem("token");
+    const n = localStorage.getItem("name");
+    const e = localStorage.getItem("email");
 
-      if (!t) {
-        setLoading(false);
-        return;
-      }
-
-      const res = await fetch(`${API_URL}/private`, {
-        headers: { Authorization: `Bearer ${t}` }
-      });
-
-      if (res.ok) {
-        setToken(t);
-        setName(n || "");
-        loadItems(t);
-      } else {
-        localStorage.clear();
-      }
-
-      setLoading(false);
+    if (t) {
+      setToken(t);
+      setName(n || "");
+      setEmail(e || "");
+      loadItems(t);
     }
-
-    restore();
+    setLoading(false);
   }, []);
 
   async function handleLogin() {
-    const res = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password })
-    });
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
 
-    const data = await res.json();
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.msg || "Erro no login");
+        return;
+      }
 
-    if (!data.token) {
-      alert(data.msg || "Erro no login");
-      return;
+      const data = await res.json();
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("name", data.user.name);
+      localStorage.setItem("email", data.user.email);
+
+      setToken(data.token);
+      setName(data.user.name);
+      loadItems(data.token);
+    } catch {
+      alert("Erro de conexão com o servidor");
     }
-
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("name", data.user.name);
-
-    setToken(data.token);
-    setName(data.user.name);
-    loadItems(data.token);
   }
 
   async function handleRegister() {
-    const res = await fetch(`${API_URL}/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password })
-    });
+    try {
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password })
+      });
 
-    const data = await res.json();
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.msg || "Erro no cadastro");
+        return;
+      }
 
-    if (!data.id) {
-      alert(data.msg || "Erro no cadastro");
-      return;
+      alert("Cadastro realizado. Faça login.");
+      setMode("login");
+      setPassword("");
+    } catch {
+      alert("Erro de conexão com o servidor");
     }
-
-    alert("Cadastro realizado! Faça login.");
-    setMode("login");
   }
 
   async function loadItems(tok) {
@@ -88,6 +83,7 @@ function App() {
       headers: { Authorization: `Bearer ${tok}` }
     });
 
+    if (!res.ok) return;
     const data = await res.json();
     setItems(Array.isArray(data) ? data : []);
   }
@@ -109,8 +105,8 @@ function App() {
   }
 
   async function updateStatus(item) {
-    const idx = STATUS_FLOW.indexOf(item.status);
-    if (idx < 0 || idx === STATUS_FLOW.length - 1) return;
+    const index = STATUS_FLOW.indexOf(item.status);
+    if (index === -1 || index === STATUS_FLOW.length - 1) return;
 
     await fetch(`${API_URL}/items/${item._id}`, {
       method: "PUT",
@@ -118,7 +114,7 @@ function App() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ status: STATUS_FLOW[idx + 1] })
+      body: JSON.stringify({ status: STATUS_FLOW[index + 1] })
     });
 
     loadItems(token);
@@ -137,31 +133,33 @@ function App() {
     localStorage.clear();
     setToken(null);
     setItems([]);
+    setEmail("");
     setName("");
+    setPassword("");
   }
 
-  if (loading) return <div className="container"><h1>Carregando...</h1></div>;
+  if (loading) return <h1 style={{ color: "#fff" }}>Carregando...</h1>;
 
   if (!token) {
     return (
       <div className="container">
         <div className="card">
-          <h1>Pizzaria App</h1>
+          <h1 className="title">Pizzaria App</h1>
 
           {mode === "login" ? (
             <>
-              <input placeholder="Email" onChange={e => setEmail(e.target.value)} />
-              <input type="password" placeholder="Senha" onChange={e => setPassword(e.target.value)} />
+              <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+              <input type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} />
               <button onClick={handleLogin}>Entrar</button>
-              <p onClick={() => setMode("register")}>Cadastrar</p>
+              <p className="link" onClick={() => setMode("register")}>Cadastrar</p>
             </>
           ) : (
             <>
-              <input placeholder="Nome" onChange={e => setName(e.target.value)} />
-              <input placeholder="Email" onChange={e => setEmail(e.target.value)} />
-              <input type="password" placeholder="Senha" onChange={e => setPassword(e.target.value)} />
+              <input placeholder="Nome" value={name} onChange={e => setName(e.target.value)} />
+              <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+              <input type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} />
               <button onClick={handleRegister}>Cadastrar</button>
-              <p onClick={() => setMode("login")}>Login</p>
+              <p className="link" onClick={() => setMode("login")}>Login</p>
             </>
           )}
         </div>
@@ -172,31 +170,25 @@ function App() {
   return (
     <div className="container">
       <div className="card">
-        <h1>Pedidos de Pizza</h1>
-        <h2>Cliente: {name}</h2>
+        <h1 className="title">Pedidos de Pizza</h1>
+        <h2 className="subtitle">Cliente: {name}</h2>
 
-        <input
-          placeholder="Descrição do pedido"
-          value={newItem}
-          onChange={e => setNewItem(e.target.value)}
-        />
-        <button onClick={addItem}>+</button>
+        <div className="add">
+          <input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="Descrição do pedido" />
+          <button className="add-btn" onClick={addItem}>+</button>
+        </div>
 
         <ul>
           {items.map(item => (
             <li key={item._id}>
-              <b>🍕 Pedido</b>
-              <div>Descrição: {item.description || "—"}</div>
-              <div>Status: {item.status}</div>
-              {item.status !== "entregue" && (
-                <button onClick={() => updateStatus(item)}>Avançar status</button>
-              )}
-              <button onClick={() => deleteItem(item._id)}>❌</button>
+              <b>{item.description}</b> — {item.status}
+              <button onClick={() => updateStatus(item)}>Avançar</button>
+              <button className="delete" onClick={() => deleteItem(item._id)}>❌</button>
             </li>
           ))}
         </ul>
 
-        <button onClick={logout}>Logout</button>
+        <button className="logout" onClick={logout}>Logout</button>
       </div>
     </div>
   );
