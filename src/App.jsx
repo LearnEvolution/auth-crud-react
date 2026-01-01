@@ -106,6 +106,19 @@ function App() {
     loadItems(token);
   }
 
+  async function advanceStatus(id, status) {
+    await fetch(`${API_URL}/items/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ status })
+    });
+
+    loadItems(token);
+  }
+
   function logout() {
     localStorage.clear();
     setToken(null);
@@ -174,11 +187,25 @@ function App() {
         </div>
 
         <ul>
-          {items.map(item => (
-            <li key={item._id}>
-              <b>{item.description}</b> — {item.status}
-            </li>
-          ))}
+          {items.map(item => {
+            const currentIndex = STATUS_FLOW.indexOf(item.status);
+            const nextStatus = STATUS_FLOW[currentIndex + 1];
+
+            return (
+              <li key={item._id} style={{ marginBottom: 8 }}>
+                <b>{item.description}</b> — {item.status}
+
+                {nextStatus && (
+                  <button
+                    style={{ marginLeft: 10 }}
+                    onClick={() => advanceStatus(item._id, nextStatus)}
+                  >
+                    Avançar
+                  </button>
+                )}
+              </li>
+            );
+          })}
         </ul>
 
         <button className="logout" onClick={logout}>Logout</button>
