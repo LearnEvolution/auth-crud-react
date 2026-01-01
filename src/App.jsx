@@ -10,7 +10,9 @@ function App() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [token, setToken] = useState(null);
+
   const [items, setItems] = useState([]);
+  const [pizzas, setPizzas] = useState([]);
   const [newItem, setNewItem] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -18,6 +20,8 @@ function App() {
     const t = localStorage.getItem("token");
     const n = localStorage.getItem("name");
     const e = localStorage.getItem("email");
+
+    loadPizzas();
 
     if (t) {
       setToken(t);
@@ -28,54 +32,52 @@ function App() {
     setLoading(false);
   }, []);
 
-  async function handleLogin() {
+  async function loadPizzas() {
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.msg || "Erro no login");
-        return;
-      }
-
+      const res = await fetch(`${API_URL}/pizzas`);
       const data = await res.json();
-
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("name", data.user.name);
-      localStorage.setItem("email", data.user.email);
-
-      setToken(data.token);
-      setName(data.user.name);
-      loadItems(data.token);
+      setPizzas(Array.isArray(data) ? data : []);
     } catch {
-      alert("Erro de conexão com o servidor");
+      console.log("Erro ao carregar pizzas");
     }
   }
 
-  async function handleRegister() {
-    try {
-      const res = await fetch(`${API_URL}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password })
-      });
+  async function handleLogin() {
+    const res = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
 
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.msg || "Erro no cadastro");
-        return;
-      }
-
-      alert("Cadastro realizado. Faça login.");
-      setMode("login");
-      setPassword("");
-    } catch {
-      alert("Erro de conexão com o servidor");
+    if (!res.ok) {
+      alert("Erro no login");
+      return;
     }
+
+    const data = await res.json();
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("name", data.user.name);
+    localStorage.setItem("email", data.user.email);
+
+    setToken(data.token);
+    setName(data.user.name);
+    loadItems(data.token);
+  }
+
+  async function handleRegister() {
+    const res = await fetch(`${API_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password })
+    });
+
+    if (!res.ok) {
+      alert("Erro no cadastro");
+      return;
+    }
+
+    alert("Cadastro realizado!");
+    setMode("login");
   }
 
   async function loadItems(tok) {
@@ -85,7 +87,7 @@ function App() {
 
     if (!res.ok) return;
     const data = await res.json();
-    setItems(Array.isArray(data) ? data : []);
+    setItems(data);
   }
 
   async function addItem() {
@@ -104,38 +106,10 @@ function App() {
     loadItems(token);
   }
 
-  async function updateStatus(item) {
-    const index = STATUS_FLOW.indexOf(item.status);
-    if (index === -1 || index === STATUS_FLOW.length - 1) return;
-
-    await fetch(`${API_URL}/items/${item._id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ status: STATUS_FLOW[index + 1] })
-    });
-
-    loadItems(token);
-  }
-
-  async function deleteItem(id) {
-    await fetch(`${API_URL}/items/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    loadItems(token);
-  }
-
   function logout() {
     localStorage.clear();
     setToken(null);
     setItems([]);
-    setEmail("");
-    setName("");
-    setPassword("");
   }
 
   if (loading) return <h1 style={{ color: "#fff" }}>Carregando...</h1>;
@@ -173,8 +147,29 @@ function App() {
         <h1 className="title">Pedidos de Pizza</h1>
         <h2 className="subtitle">Cliente: {name}</h2>
 
+        {/* 🍕 CARDÁPIO */}
+        <h3 style={{ marginTop: 15 }}>🍕 Cardápio</h3>
+        <ul>
+          {pizzas.map(p => (
+            <li
+              key={p._id}
+              style={{ cursor: "pointer" }}
+              onClick={() =>
+                setNewItem(`Pizza ${p.nome} (${p.tamanho}) — R$ ${p.preco}`)
+              }
+            >
+              <b>{p.nome}</b> ({p.tamanho}) — R$ {p.preco}
+            </li>
+          ))}
+        </ul>
+
+        {/* 📦 PEDIDOS */}
         <div className="add">
-          <input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="Descrição do pedido" />
+          <input
+            value={newItem}
+            onChange={e => setNewItem(e.target.value)}
+            placeholder="Descrição do pedido"
+          />
           <button className="add-btn" onClick={addItem}>+</button>
         </div>
 
@@ -182,8 +177,6 @@ function App() {
           {items.map(item => (
             <li key={item._id}>
               <b>{item.description}</b> — {item.status}
-              <button onClick={() => updateStatus(item)}>Avançar</button>
-              <button className="delete" onClick={() => deleteItem(item._id)}>❌</button>
             </li>
           ))}
         </ul>
