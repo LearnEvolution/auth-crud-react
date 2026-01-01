@@ -12,7 +12,7 @@ function AppAdmin() {
 
   useEffect(() => {
     if (token) {
-      loadUsers();
+      loadUsers(token); // ✅ usar o token correto
     }
   }, [token]);
 
@@ -24,6 +24,7 @@ function AppAdmin() {
     }
 
     setLoading(true);
+
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
@@ -39,16 +40,17 @@ function AppAdmin() {
 
       const data = await res.json();
 
-      // 🚫 Bloquear se não for admin
-      if (data.user && data.user.role !== "admin") {
+      // ❌ Bloquear se não for admin
+      if (!data.user || data.user.role !== "admin") {
         alert("Acesso restrito a administradores");
         setLoading(false);
         return;
       }
 
+      // ✅ salvar token e carregar usuários
       localStorage.setItem("token", data.token);
       setToken(data.token);
-      loadUsers();
+      loadUsers(data.token); // passa token direto
     } catch (err) {
       console.log(err);
       alert("Erro no login");
@@ -57,10 +59,10 @@ function AppAdmin() {
   }
 
   // 👥 CARREGAR USUÁRIOS
-  async function loadUsers() {
+  async function loadUsers(tok) {
     try {
       const res = await fetch(`${API_URL}/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${tok}` }
       });
 
       if (!res.ok) {
