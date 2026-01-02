@@ -43,6 +43,36 @@ function AppAdmin({ logout }) {
     }
   }
 
+  // 🔄 ATUALIZAR STATUS DO PEDIDO
+  async function updateStatus(itemId, newStatus) {
+    try {
+      const res = await fetch(`${API_URL}/items/${itemId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (!res.ok) {
+        alert("Erro ao atualizar status");
+        return;
+      }
+
+      // Atualiza lista sem recarregar tudo
+      setItems((prev) =>
+        prev.map((item) =>
+          item._id === itemId
+            ? { ...item, status: newStatus }
+            : item
+        )
+      );
+    } catch (err) {
+      alert("Erro ao atualizar status");
+    }
+  }
+
   if (loading) {
     return <h1 style={{ color: "#fff" }}>Carregando...</h1>;
   }
@@ -66,11 +96,34 @@ function AppAdmin({ logout }) {
         <h3>📦 Pedidos</h3>
         <ul>
           {items.length === 0 && <li>Nenhum pedido</li>}
+
           {items.map((p) => (
-            <li key={p._id} style={{ marginBottom: 8 }}>
-              <b>{p.userId?.name}</b> ({p.userId?.email}) <br />
-              📝 {p.description} <br />
-              📌 Status: <i>{p.status}</i>
+            <li key={p._id} style={{ flexDirection: "column", gap: 6 }}>
+              <span>
+                <b>{p.userId?.name}</b> ({p.userId?.email})
+              </span>
+
+              <span>📝 {p.description}</span>
+
+              <label>
+                📌 Status:
+                <select
+                  value={p.status}
+                  onChange={(e) =>
+                    updateStatus(p._id, e.target.value)
+                  }
+                  style={{
+                    marginLeft: 8,
+                    padding: 6,
+                    borderRadius: 6
+                  }}
+                >
+                  <option value="novo">novo</option>
+                  <option value="preparando">preparando</option>
+                  <option value="pronto">pronto</option>
+                  <option value="entregue">entregue</option>
+                </select>
+              </label>
             </li>
           ))}
         </ul>
